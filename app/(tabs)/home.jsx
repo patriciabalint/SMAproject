@@ -1,148 +1,232 @@
+import React, { useContext, useState } from 'react';
 import {
   View,
   Text,
   FlatList,
   TouchableOpacity,
   StyleSheet,
+  Alert,
 } from 'react-native';
+import { TaskContext } from '../context/TaskContext';
 import { useRouter } from 'expo-router';
-import { useTaskContext } from '../context/TaskContext'; // Importă contextul
+import {
+  GestureHandlerRootView,
+  Swipeable,
+} from 'react-native-gesture-handler';
 
 export default function HomeScreen() {
+  const { tasks, toggleTaskCompletion, deleteTask } = useContext(TaskContext);
+  const [showCompleted, setShowCompleted] = useState(false);
   const router = useRouter();
 
-  // Folosește contextul pentru a obține task-urile și funcțiile
-  const { tasks, completedTasks, handleCompleteTask } = useTaskContext(); // Accesează datele și funcțiile din context
+  const filteredTasks = showCompleted
+    ? tasks.filter((task) => task.completed)
+    : tasks;
+
+  const handleDelete = (id) => {
+    Alert.alert(
+      'Confirm Delete',
+      'Are you sure you want to delete this task?',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { text: 'Delete', style: 'destructive', onPress: () => deleteTask(id) },
+      ]
+    );
+  };
+
+  const renderTask = ({ item }) => (
+    <Swipeable
+      renderRightActions={() => (
+        <TouchableOpacity
+          onPress={() => handleDelete(item.id)}
+          style={styles.deleteButton}
+        >
+          <Text style={styles.deleteButtonText}>Delete</Text>
+        </TouchableOpacity>
+      )}
+    >
+      <TouchableOpacity
+        style={styles.task}
+        onPress={() => router.push(`/edit?taskId=${item.id}`)}
+      >
+        <View style={[styles.taskCategory, { backgroundColor: item.color }]} />
+        <View style={styles.taskDetails}>
+          <Text style={styles.taskTitle}>{item.title}</Text>
+          <Text style={styles.taskTime}>
+            {item.startTime} - {item.endTime}
+          </Text>
+        </View>
+        <TouchableOpacity onPress={() => toggleTaskCompletion(item.id)}>
+          <View
+            style={
+              item.completed ? styles.circleChecked : styles.circleUnchecked
+            }
+          >
+            {item.completed && <Text style={styles.checkmark}>✓</Text>}
+          </View>
+        </TouchableOpacity>
+      </TouchableOpacity>
+    </Swipeable>
+  );
 
   return (
-    <View style={styles.container}>
-      {/* Titlu */}
-      <Text style={styles.date}>Oct 29, 2024</Text>
-      <Text style={styles.title}>
-        My <Text style={{ fontWeight: 'bold' }}>ToDoList</Text>
-      </Text>
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      <View style={styles.container}>
+        <Text style={styles.title}>My ToDoList</Text>
 
-      {/* Lista de Task-uri Active */}
-      <FlatList
-        data={tasks}
-        keyExtractor={(item) => item.id}
-        renderItem={({ item }) => (
-          <View style={styles.taskItem}>
-            <View>
-              <Text style={styles.taskTitle}>{item.title}</Text>
-              <Text style={styles.taskTime}>{item.time}</Text>
-            </View>
-            <TouchableOpacity onPress={() => handleCompleteTask(item.id)}>
-              <View style={styles.taskCircle} />
-            </TouchableOpacity>
-          </View>
+        <View style={styles.tabs}>
+          <TouchableOpacity
+            style={[styles.tab, !showCompleted && styles.activeTab]}
+            onPress={() => setShowCompleted(false)}
+          >
+            <Text style={styles.tabText}>All</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.tab, showCompleted && styles.activeTab]}
+            onPress={() => setShowCompleted(true)}
+          >
+            <Text style={styles.tabText}>Completed</Text>
+          </TouchableOpacity>
+        </View>
+
+        {filteredTasks.length > 0 ? (
+          <FlatList
+            data={filteredTasks}
+            keyExtractor={(item) => item.id}
+            renderItem={renderTask}
+          />
+        ) : (
+          <Text style={styles.placeholderText}>
+            No tasks yet. Tap the button below to add your first task.
+          </Text>
         )}
-        ListEmptyComponent={
-          <Text style={styles.emptyText}>No tasks added yet!</Text>
-        }
-      />
 
-      {/* Titlu pentru Task-uri Complete */}
-      <Text style={styles.completedTitle}>Completed</Text>
-
-      {/* Lista de Task-uri Complete */}
-      <FlatList
-        data={completedTasks}
-        keyExtractor={(item) => item.id}
-        renderItem={({ item }) => (
-          <View style={styles.taskItem}>
-            <View>
-              <Text style={[styles.taskTitle, { color: '#9cd9a5' }]}>
-                {item.title}
-              </Text>
-              <Text style={styles.taskTime}>{item.time}</Text>
-            </View>
-            <View style={styles.completedIcon} />
-          </View>
-        )}
-      />
-
-      {/* Buton pentru a Adăuga Task Nou */}
-      <TouchableOpacity
-        style={styles.addButton}
-        onPress={() => router.push('/create')} // Direcționează către pagina de creare task
-      >
-        <Text style={styles.addButtonText}>Add new task +</Text>
-      </TouchableOpacity>
-    </View>
+        <TouchableOpacity
+          style={styles.addButton}
+          onPress={() => router.push('/create')}
+        >
+          <Text style={styles.addButtonText}>Add new task +</Text>
+        </TouchableOpacity>
+      </View>
+    </GestureHandlerRootView>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#0d0c22',
+    backgroundColor: '#1A1B41',
     padding: 20,
-  },
-  date: {
-    color: '#635bff',
-    fontSize: 16,
-    textAlign: 'center',
-    marginTop: 10,
+    paddingTop: 50,
   },
   title: {
-    color: '#fff',
     fontSize: 28,
-    fontWeight: '300',
+    fontWeight: 'bold',
+    color: '#FFFFFF',
+    marginBottom: 20,
     textAlign: 'center',
-    marginVertical: 10,
   },
-  taskItem: {
+  tabs: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
+    justifyContent: 'space-around',
+    marginBottom: 20,
+  },
+  tab: {
+    flex: 1,
+    padding: 10,
+    borderRadius: 20,
     alignItems: 'center',
-    backgroundColor: '#1c1b33',
-    padding: 15,
+    backgroundColor: '#2B2C4E',
+    marginHorizontal: 5,
+  },
+  activeTab: {
+    backgroundColor: '#6C63FF',
+  },
+  tabText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+  },
+  task: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FFFFFF',
     borderRadius: 10,
     marginBottom: 10,
+    padding: 15,
+  },
+  taskCategory: {
+    width: 10,
+    height: '100%',
+    borderRadius: 5,
+    marginRight: 10,
+  },
+  taskDetails: {
+    flex: 1,
   },
   taskTitle: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: '600',
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#1A1B41',
   },
   taskTime: {
-    color: '#8f8f9d',
-    fontSize: 14,
+    fontSize: 16,
+    color: '#8E8E8E',
+    marginTop: 5,
   },
-  taskCircle: {
-    width: 20,
-    height: 20,
-    borderRadius: 10,
+  circleUnchecked: {
+    width: 30,
+    height: 30,
+    borderRadius: 15,
     borderWidth: 2,
-    borderColor: '#635bff',
+    borderColor: '#6C63FF',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  completedTitle: {
-    color: '#fff',
-    fontSize: 20,
-    marginVertical: 10,
+  circleChecked: {
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    backgroundColor: '#6C63FF',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  completedIcon: {
-    width: 20,
-    height: 20,
-    borderRadius: 10,
-    backgroundColor: '#9cd9a5',
+  checkmark: {
+    color: '#FFFFFF',
+    fontSize: 18,
+    fontWeight: 'bold',
   },
-  emptyText: {
-    color: '#8f8f9d',
+  placeholderText: {
+    fontSize: 16,
+    color: '#8E8E8E',
     textAlign: 'center',
-    marginTop: 20,
+    marginTop: 50,
   },
   addButton: {
-    backgroundColor: '#635bff',
-    borderRadius: 10,
+    position: 'absolute',
+    bottom: 30,
+    left: 20,
+    right: 20,
+    backgroundColor: '#6C63FF',
     paddingVertical: 15,
+    borderRadius: 25,
     alignItems: 'center',
-    marginTop: 20,
   },
   addButtonText: {
-    color: '#fff',
+    color: '#FFFFFF',
     fontSize: 18,
+    fontWeight: 'bold',
+  },
+  deleteButton: {
+    backgroundColor: '#FF4D4D',
+    justifyContent: 'center',
+    alignItems: 'center',
+    width: 100,
+    height: '100%',
+    borderRadius: 10,
+  },
+  deleteButtonText: {
+    color: '#FFFFFF',
+    fontSize: 16,
     fontWeight: 'bold',
   },
 });

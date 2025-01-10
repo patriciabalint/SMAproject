@@ -1,29 +1,52 @@
-import React, { createContext, useState, useContext } from 'react';
+import React, { createContext, useState } from 'react';
 
-// Creează contextul
-const TaskContext = createContext();
+// Crearea contextului
+export const TaskContext = createContext();
 
-// Folosește contextul în aplicație
-export const useTaskContext = () => useContext(TaskContext);
-
-// Provider-ul contextului
+// Furnizorul de context pentru task-uri
 export const TaskProvider = ({ children }) => {
   const [tasks, setTasks] = useState([]);
-  const [completedTasks, setCompletedTasks] = useState([]);
 
-  const handleAddTask = (newTask) => {
-    setTasks((prevTasks) => [...prevTasks, newTask]);
+  // Funcție pentru a adăuga un task nou
+  const addTask = (task) => {
+    setTasks((prevTasks) => [
+      ...prevTasks,
+      { ...task, id: Date.now().toString(), completed: false },
+    ]);
   };
 
-  const handleCompleteTask = (taskId) => {
-    const task = tasks.find((t) => t.id === taskId);
-    setTasks(tasks.filter((t) => t.id !== taskId));
-    setCompletedTasks((prevCompletedTasks) => [...prevCompletedTasks, task]);
+  // Funcție pentru a șterge un task
+  const deleteTask = (id) => {
+    setTasks((prevTasks) => prevTasks.filter((task) => task.id !== id));
+  };
+
+  // Funcție pentru a edita un task
+  const editTask = (id, updatedTask) => {
+    setTasks((prevTasks) =>
+      prevTasks.map((task) =>
+        task.id === id ? { ...task, ...updatedTask } : task
+      )
+    );
+  };
+
+  // Funcție pentru a schimba starea de completare a unui task
+  const toggleTaskCompletion = (id) => {
+    setTasks((prevTasks) =>
+      prevTasks.map((task) =>
+        task.id === id ? { ...task, completed: !task.completed } : task
+      )
+    );
   };
 
   return (
     <TaskContext.Provider
-      value={{ tasks, completedTasks, handleAddTask, handleCompleteTask }}
+      value={{
+        tasks,
+        addTask,
+        deleteTask,
+        editTask,
+        toggleTaskCompletion,
+      }}
     >
       {children}
     </TaskContext.Provider>

@@ -1,29 +1,22 @@
 import { Stack } from 'expo-router';
-import { StatusBar } from 'expo-status-bar';
-import { TaskProvider } from '../context/TaskContext'; // Asigură-te că importul este corect
 
-const AuthLayout = () => {
+const TabsLayout = () => {
   return (
-    <TaskProvider>
-      {' '}
-      {/* Învelește întreaga aplicație cu TaskProvider */}
-      <Stack>
-        <Stack.Screen
-          name="home"
-          options={{
-            headerShown: false,
-          }}
-        />
-        <Stack.Screen
-          name="create"
-          options={{
-            headerShown: false,
-          }}
-        />
-      </Stack>
-      <StatusBar backgroundColor="#bafaff" style="dark" />
-    </TaskProvider>
+    <Stack>
+      <Stack.Screen
+        name="home"
+        options={{
+          headerShown: false, // Ascunde header-ul default
+        }}
+      />
+      <Stack.Screen
+        name="create"
+        options={{
+          headerShown: false, // Ascunde header-ul default
+        }}
+      />
+    </Stack>
   );
 };
 
-export default AuthLayout;
+export default TabsLayout;
