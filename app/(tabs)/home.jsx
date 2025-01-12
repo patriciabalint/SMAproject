@@ -1,4 +1,4 @@
-import React, { useContext, useState } from 'react';
+import React, { useContext, useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -9,19 +9,69 @@ import {
 } from 'react-native';
 import { TaskContext } from '../context/TaskContext';
 import { useRouter } from 'expo-router';
-import {
-  GestureHandlerRootView,
-  Swipeable,
-} from 'react-native-gesture-handler';
 
 export default function HomeScreen() {
-  const { tasks, toggleTaskCompletion, deleteTask } = useContext(TaskContext);
-  const [showCompleted, setShowCompleted] = useState(false);
+  const {
+    tasks,
+    toggleTaskCompletion,
+    deleteTask,
+    checkUpcomingTasks,
+    checkExpiredTasks,
+    markOverdueTasks,
+  } = useContext(TaskContext);
+
+  const [activeTab, setActiveTab] = useState('All'); // Tab activ (All, Completed, Overdue)
   const router = useRouter();
 
-  const filteredTasks = showCompleted
-    ? tasks.filter((task) => task.completed)
-    : tasks;
+  // Notificare cu 5 minute înainte de expirare
+  useEffect(() => {
+    const interval = setInterval(() => {
+      const upcomingTasks = checkUpcomingTasks();
+      if (upcomingTasks.length > 0) {
+        upcomingTasks.forEach((task) => {
+          alert(`Task "${task.title}" ends in 5 minutes!`);
+        });
+      }
+    }, 60000); // Verifică la fiecare minut
+
+    return () => clearInterval(interval);
+  }, [tasks]);
+
+  // Mutare automată în "Overdue" și notificare la expirare
+  useEffect(() => {
+    const interval = setInterval(() => {
+      const expiredTasks = checkExpiredTasks();
+      if (expiredTasks.length > 0) {
+        expiredTasks.forEach((task) => {
+          alert(
+            `Task "${task.title}" has expired and will be moved to "Overdue"!`
+          );
+        });
+        markOverdueTasks(); // Marchează task-urile expirate ca "Overdue"
+      }
+    }, 60000); // Verifică la fiecare minut
+
+    return () => clearInterval(interval);
+  }, [tasks]);
+
+  const handleTaskPress = (task) => {
+    Alert.alert(
+      'Task Options',
+      `What do you want to do with "${task.title}"?`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Edit',
+          onPress: () => router.push(`/edit?taskId=${task.id}`),
+        },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: () => handleDelete(task.id),
+        },
+      ]
+    );
+  };
 
   const handleDelete = (id) => {
     Alert.alert(
@@ -34,81 +84,79 @@ export default function HomeScreen() {
     );
   };
 
+  // Filtrează task-urile pe baza tab-ului activ
+  const filteredTasks =
+    activeTab === 'All'
+      ? tasks.filter((task) => !task.completed && !task.overdue)
+      : activeTab === 'Completed'
+      ? tasks.filter((task) => task.completed)
+      : tasks.filter((task) => task.overdue); // Tab "Overdue"
+
   const renderTask = ({ item }) => (
-    <Swipeable
-      renderRightActions={() => (
-        <TouchableOpacity
-          onPress={() => handleDelete(item.id)}
-          style={styles.deleteButton}
+    <TouchableOpacity style={styles.task} onPress={() => handleTaskPress(item)}>
+      <View style={[styles.taskCategory, { backgroundColor: item.color }]} />
+      <View style={styles.taskDetails}>
+        <Text style={styles.taskTitle}>{item.title}</Text>
+        <Text style={styles.taskTime}>
+          {item.startTime} - {item.endTime}
+        </Text>
+      </View>
+      <TouchableOpacity onPress={() => toggleTaskCompletion(item.id)}>
+        <View
+          style={item.completed ? styles.circleChecked : styles.circleUnchecked}
         >
-          <Text style={styles.deleteButtonText}>Delete</Text>
-        </TouchableOpacity>
-      )}
-    >
-      <TouchableOpacity
-        style={styles.task}
-        onPress={() => router.push(`/edit?taskId=${item.id}`)}
-      >
-        <View style={[styles.taskCategory, { backgroundColor: item.color }]} />
-        <View style={styles.taskDetails}>
-          <Text style={styles.taskTitle}>{item.title}</Text>
-          <Text style={styles.taskTime}>
-            {item.startTime} - {item.endTime}
-          </Text>
+          {item.completed && <Text style={styles.checkmark}>✓</Text>}
         </View>
-        <TouchableOpacity onPress={() => toggleTaskCompletion(item.id)}>
-          <View
-            style={
-              item.completed ? styles.circleChecked : styles.circleUnchecked
-            }
-          >
-            {item.completed && <Text style={styles.checkmark}>✓</Text>}
-          </View>
-        </TouchableOpacity>
       </TouchableOpacity>
-    </Swipeable>
+    </TouchableOpacity>
   );
 
   return (
-    <GestureHandlerRootView style={{ flex: 1 }}>
-      <View style={styles.container}>
-        <Text style={styles.title}>My ToDoList</Text>
+    <View style={styles.container}>
+      <Text style={styles.title}>My ToDoList</Text>
 
-        <View style={styles.tabs}>
-          <TouchableOpacity
-            style={[styles.tab, !showCompleted && styles.activeTab]}
-            onPress={() => setShowCompleted(false)}
-          >
-            <Text style={styles.tabText}>All</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[styles.tab, showCompleted && styles.activeTab]}
-            onPress={() => setShowCompleted(true)}
-          >
-            <Text style={styles.tabText}>Completed</Text>
-          </TouchableOpacity>
-        </View>
-
-        {filteredTasks.length > 0 ? (
-          <FlatList
-            data={filteredTasks}
-            keyExtractor={(item) => item.id}
-            renderItem={renderTask}
-          />
-        ) : (
-          <Text style={styles.placeholderText}>
-            No tasks yet. Tap the button below to add your first task.
-          </Text>
-        )}
-
+      {/* Tab-uri pentru All, Completed și Overdue */}
+      <View style={styles.tabs}>
         <TouchableOpacity
-          style={styles.addButton}
-          onPress={() => router.push('/create')}
+          style={[styles.tab, activeTab === 'All' && styles.activeTab]}
+          onPress={() => setActiveTab('All')}
         >
-          <Text style={styles.addButtonText}>Add new task +</Text>
+          <Text style={styles.tabText}>All</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.tab, activeTab === 'Completed' && styles.activeTab]}
+          onPress={() => setActiveTab('Completed')}
+        >
+          <Text style={styles.tabText}>Completed</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.tab, activeTab === 'Overdue' && styles.activeTab]}
+          onPress={() => setActiveTab('Overdue')}
+        >
+          <Text style={styles.tabText}>Overdue</Text>
         </TouchableOpacity>
       </View>
-    </GestureHandlerRootView>
+
+      {/* Lista task-urilor filtrate */}
+      {filteredTasks.length > 0 ? (
+        <FlatList
+          data={filteredTasks}
+          keyExtractor={(item) => item.id}
+          renderItem={renderTask}
+        />
+      ) : (
+        <Text style={styles.placeholderText}>
+          No tasks yet. Tap the button below to add your first task.
+        </Text>
+      )}
+
+      <TouchableOpacity
+        style={styles.addButton}
+        onPress={() => router.push('/create')}
+      >
+        <Text style={styles.addButtonText}>Add new task +</Text>
+      </TouchableOpacity>
+    </View>
   );
 }
 
@@ -117,7 +165,7 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#1A1B41',
     padding: 20,
-    paddingTop: 50,
+    paddingTop: 70,
   },
   title: {
     fontSize: 28,
@@ -203,7 +251,7 @@ const styles = StyleSheet.create({
   },
   addButton: {
     position: 'absolute',
-    bottom: 30,
+    bottom: 40,
     left: 20,
     right: 20,
     backgroundColor: '#6C63FF',
@@ -214,19 +262,6 @@ const styles = StyleSheet.create({
   addButtonText: {
     color: '#FFFFFF',
     fontSize: 18,
-    fontWeight: 'bold',
-  },
-  deleteButton: {
-    backgroundColor: '#FF4D4D',
-    justifyContent: 'center',
-    alignItems: 'center',
-    width: 100,
-    height: '100%',
-    borderRadius: 10,
-  },
-  deleteButtonText: {
-    color: '#FFFFFF',
-    fontSize: 16,
     fontWeight: 'bold',
   },
 });
