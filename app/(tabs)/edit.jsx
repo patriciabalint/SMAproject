@@ -9,7 +9,7 @@ import {
   TouchableWithoutFeedback,
   Alert,
 } from 'react-native';
-import DateTimePicker from '@react-native-community/datetimepicker'; // Import pentru selectorul de timp
+import DateTimePicker from '@react-native-community/datetimepicker';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { TaskContext } from '../context/TaskContext';
 
@@ -26,47 +26,23 @@ export default function EditScreen() {
   const [showStartTimePicker, setShowStartTimePicker] = useState(false);
   const [showEndTimePicker, setShowEndTimePicker] = useState(false);
 
-  // Culoarea categoriei
   const CATEGORY_COLORS = {
     Learning: '#6EC177',
     Working: '#3A81F1',
     General: '#F1C40F',
   };
 
+  // Populează datele inițiale
   useEffect(() => {
-    const checkTasks = () => {
-      const currentTime = new Date();
-      tasks.forEach((task) => {
-        if (task.alerted) return; // Sar peste task-urile deja alertate
-
-        const taskEndTime = new Date();
-        const [hours, minutes] = task.endTime.split(':').map(Number);
-        taskEndTime.setHours(hours, minutes, 0, 0);
-
-        const timeDifference = taskEndTime - currentTime; // Diferența în milisecunde
-
-        if (timeDifference > 0 && timeDifference <= 5 * 60 * 1000) {
-          // Afișăm alertă cu 5 minute înainte
-          alert(`Task "${task.title}" ends in 5 minutes!`);
-          task.alerted = true; // Marchează task-ul ca alertat
-        }
-      });
-    };
-
-    const adjustInterval = () => {
-      const now = new Date();
-      const msUntilNextMinute =
-        60000 - (now.getSeconds() * 1000 + now.getMilliseconds());
-      setTimeout(() => {
-        checkTasks();
-        setInterval(checkTasks, 60000); // Continuăm cu un interval de 1 minut
-      }, msUntilNextMinute);
-    };
-
-    adjustInterval(); // Start sincronizat cu minutul următor
-
-    return () => clearInterval(); // Curățăm intervalul la demontare
-  }, [tasks]);
+    const taskToEdit = tasks.find((task) => task.id === taskId);
+    if (taskToEdit) {
+      setTitle(taskToEdit.title);
+      setStartTime(new Date(`1970-01-01T${taskToEdit.startTime}:00`));
+      setEndTime(new Date(`1970-01-01T${taskToEdit.endTime}:00`));
+      setCategory(taskToEdit.category);
+      setNotes(taskToEdit.notes || '');
+    }
+  }, [taskId, tasks]);
 
   const handleSave = () => {
     if (title.trim() === '' || !startTime || !endTime || !category) {
@@ -212,7 +188,7 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#1A1B41',
     padding: 20,
-    paddingTop: 30, // Mutăm totul mai sus
+    paddingTop: 30,
   },
   title: {
     fontSize: 28,

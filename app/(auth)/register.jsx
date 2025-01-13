@@ -1,52 +1,111 @@
+import React, { useState } from 'react';
 import {
   View,
   Text,
   TextInput,
   TouchableOpacity,
   StyleSheet,
+  Alert,
+  KeyboardAvoidingView,
+  Keyboard,
+  TouchableWithoutFeedback,
+  Platform,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 
 export default function RegisterScreen() {
   const router = useRouter();
 
+  const [name, setName] = useState('');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+
+  const handleRegister = async () => {
+    if (!name || !email || !password) {
+      Alert.alert('Validation Error', 'All fields are required!');
+      return;
+    }
+
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      Alert.alert('Validation Error', 'Please enter a valid email address!');
+      return;
+    }
+
+    if (password.length < 6) {
+      Alert.alert(
+        'Validation Error',
+        'Password must be at least 6 characters!'
+      );
+      return;
+    }
+
+    try {
+      const response = await fetch('http://192.168.1.14:5000/auth/register', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ email, password }),
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        Alert.alert('Success', 'Registration successful!');
+        router.push('/login');
+      } else {
+        Alert.alert('Error', data.error || 'Something went wrong!');
+      }
+    } catch (error) {
+      console.error('Error registering:', error);
+      Alert.alert('Error', 'Unable to register. Please try again later.');
+    }
+  };
+
   return (
-    <View style={styles.container}>
-      {/* Page Title */}
-      <Text style={styles.title}>Register</Text>
-
-      {/* Input Fields */}
-      <TextInput
-        style={styles.input}
-        placeholder="Name"
-        placeholderTextColor="#5C5C8E"
-      />
-      <TextInput
-        style={styles.input}
-        placeholder="Email"
-        placeholderTextColor="#5C5C8E"
-        keyboardType="email-address"
-      />
-      <TextInput
-        style={styles.input}
-        placeholder="Password"
-        placeholderTextColor="#5C5C8E"
-        secureTextEntry
-      />
-
-      {/* Sign Up Button */}
-      <TouchableOpacity style={styles.button}>
-        <Text style={styles.buttonText}>Register</Text>
-      </TouchableOpacity>
-
-      {/* Navigate to Sign In */}
-      <View style={styles.footer}>
-        <Text style={styles.footerText}>Already have an account? </Text>
-        <TouchableOpacity onPress={() => router.push('/login')}>
-          <Text style={styles.linkText}>Login</Text>
-        </TouchableOpacity>
-      </View>
-    </View>
+    <KeyboardAvoidingView
+      style={{ flex: 1 }}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+    >
+      <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+        <View style={styles.container}>
+          <Text style={styles.title}>Register</Text>
+          <TextInput
+            style={styles.input}
+            placeholder="Name"
+            placeholderTextColor="#5C5C8E"
+            value={name}
+            onChangeText={setName}
+          />
+          <TextInput
+            style={styles.input}
+            placeholder="Email"
+            placeholderTextColor="#5C5C8E"
+            keyboardType="email-address"
+            value={email}
+            onChangeText={setEmail}
+          />
+          <TextInput
+            style={styles.input}
+            placeholder="Password"
+            placeholderTextColor="#5C5C8E"
+            secureTextEntry
+            value={password}
+            onChangeText={setPassword}
+          />
+          <TouchableOpacity style={styles.button} onPress={handleRegister}>
+            <Text style={styles.buttonText}>Register</Text>
+          </TouchableOpacity>
+          <View style={styles.footer}>
+            <Text style={styles.footerText}>Already have an account? </Text>
+            <TouchableOpacity onPress={() => router.push('/login')}>
+              <Text style={styles.linkText}>Login</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </TouchableWithoutFeedback>
+    </KeyboardAvoidingView>
   );
 }
 

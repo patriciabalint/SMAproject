@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   View,
   Text,
@@ -8,26 +8,61 @@ import {
   KeyboardAvoidingView,
   Platform,
   ScrollView,
+  Alert,
 } from 'react-native';
 import { useRouter } from 'expo-router';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 export default function LoginScreen() {
   const router = useRouter();
 
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+
+  const handleLogin = async () => {
+    try {
+      const response = await fetch('http://192.168.1.14:5000/auth/login', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ email, password }),
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        // Salvează token-ul JWT în AsyncStorage
+        await AsyncStorage.setItem('token', data.token);
+
+        Alert.alert('Success', 'Logged in successfully!');
+        router.push('/home'); // Navighează către Home
+      } else {
+        Alert.alert('Error', data.error || 'Login failed');
+      }
+    } catch (error) {
+      console.error(error);
+      Alert.alert('Error', 'Something went wrong');
+    }
+  };
+
   return (
     <KeyboardAvoidingView
       style={{ flex: 1 }}
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'} // Se ajustează în funcție de platformă
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
     >
       <ScrollView contentContainerStyle={styles.scrollContainer}>
         <View style={styles.container}>
           <Text style={styles.title}>Login</Text>
 
-          {/* User Name Input */}
+          {/* Email Input */}
           <TextInput
             style={styles.input}
-            placeholder="User Name"
+            placeholder="Email"
             placeholderTextColor="#8f8f9d"
+            value={email}
+            onChangeText={setEmail}
+            keyboardType="email-address"
           />
 
           {/* Password Input */}
@@ -36,10 +71,12 @@ export default function LoginScreen() {
             placeholder="Password"
             placeholderTextColor="#8f8f9d"
             secureTextEntry
+            value={password}
+            onChangeText={setPassword}
           />
 
           {/* Log in Button */}
-          <TouchableOpacity style={styles.loginButton}>
+          <TouchableOpacity style={styles.loginButton} onPress={handleLogin}>
             <Text style={styles.loginButtonText}>Log in</Text>
           </TouchableOpacity>
 
@@ -50,10 +87,6 @@ export default function LoginScreen() {
               <Text style={styles.signUpLink}> Register</Text>
             </TouchableOpacity>
           </View>
-
-          <TouchableOpacity onPress={() => router.push('/home')}>
-            <Text style={styles.signUpLink}> Home</Text>
-          </TouchableOpacity>
         </View>
       </ScrollView>
     </KeyboardAvoidingView>

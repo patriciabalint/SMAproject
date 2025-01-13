@@ -25,33 +25,49 @@ export default function HomeScreen() {
 
   // Notificare cu 5 minute înainte de expirare
   useEffect(() => {
-    const interval = setInterval(() => {
+    const synchronizeWithMinute = () => {
+      const now = new Date();
+      const msUntilNextMinute =
+        60000 - (now.getSeconds() * 1000 + now.getMilliseconds());
+      return msUntilNextMinute;
+    };
+
+    const startInterval = () => {
+      const delay = synchronizeWithMinute();
+      setTimeout(() => {
+        checkAndAlertUpcomingTasks(); // Verifică imediat când începe minutul
+        setInterval(checkAndAlertUpcomingTasks, 60000); // Continuă la fiecare minut
+      }, delay);
+    };
+
+    const checkAndAlertUpcomingTasks = () => {
       const upcomingTasks = checkUpcomingTasks();
       if (upcomingTasks.length > 0) {
         upcomingTasks.forEach((task) => {
-          alert(`Task "${task.title}" ends in 5 minutes!`);
+          alert(`Task "${task.title}" ends in a few minutes!`);
+          task.alerted = true; // Marchează task-ul ca alertat
         });
       }
-    }, 60000); // Verifică la fiecare minut
+    };
 
-    return () => clearInterval(interval);
+    startInterval();
+
+    return () => clearInterval(checkAndAlertUpcomingTasks); // Curăță intervalul la demontare
   }, [tasks]);
 
-  // Mutare automată în "Overdue" și notificare la expirare
   useEffect(() => {
     const interval = setInterval(() => {
       const expiredTasks = checkExpiredTasks();
       if (expiredTasks.length > 0) {
-        expiredTasks.forEach((task) => {
-          alert(
-            `Task "${task.title}" has expired and will be moved to "Overdue"!`
-          );
-        });
-        markOverdueTasks(); // Marchează task-urile expirate ca "Overdue"
+        const taskTitles = expiredTasks.map((task) => task.title).join(', ');
+        alert(
+          `The following tasks have expired and will be moved to Overdue: ${taskTitles}`
+        );
+        markOverdueTasks(); // Marchează toate task-urile ca "Overdue"
       }
-    }, 60000); // Verifică la fiecare minut
+    }, 60000); // Rulează la fiecare minut
 
-    return () => clearInterval(interval);
+    return () => clearInterval(interval); // Curăță intervalul la demontare
   }, [tasks]);
 
   const handleTaskPress = (task) => {

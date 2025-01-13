@@ -14,7 +14,8 @@ export const TaskProvider = ({ children }) => {
         id: Date.now().toString(),
         completed: false,
         alerted: false,
-        endTime: task.endTime || '00:00', // Valoare default pentru endTime
+        overdue: false,
+        endTime: task.endTime || '00:00',
       },
     ]);
   };
@@ -28,7 +29,13 @@ export const TaskProvider = ({ children }) => {
   const editTask = (id, updatedTask) => {
     setTasks((prevTasks) =>
       prevTasks.map((task) =>
-        task.id === id ? { ...task, ...updatedTask } : task
+        task.id === id
+          ? {
+              ...task,
+              ...updatedTask,
+              alerted: false, // Resetează starea de alertă
+            }
+          : task
       )
     );
   };
@@ -37,7 +44,14 @@ export const TaskProvider = ({ children }) => {
   const toggleTaskCompletion = (id) => {
     setTasks((prevTasks) =>
       prevTasks.map((task) =>
-        task.id === id ? { ...task, completed: !task.completed } : task
+        task.id === id
+          ? {
+              ...task,
+              completed: !task.completed,
+              alerted: false,
+              overdue: false,
+            }
+          : task
       )
     );
   };
@@ -62,14 +76,16 @@ export const TaskProvider = ({ children }) => {
     const currentTime = new Date();
 
     return tasks.filter((task) => {
-      if (!task.endTime) return false; // Verificăm dacă există o valoare pentru `endTime`
+      if (task.completed || task.overdue || task.alerted) {
+        return false; // Exclude task-urile completate, overdue sau deja alertate
+      }
 
       const taskEndTime = new Date();
       const [hours, minutes] = task.endTime.split(':').map(Number);
-      taskEndTime.setHours(hours, minutes, 0, 0); // Setăm orele și minutele
+      taskEndTime.setHours(hours, minutes, 0, 0);
 
-      const timeDifference = taskEndTime - currentTime; // Diferența de timp
-      return timeDifference > 0 && timeDifference <= 5 * 60 * 1000; // Task-uri care se termină în următoarele 5 minute
+      const timeDifference = taskEndTime - currentTime;
+      return timeDifference > 0 && timeDifference <= 5 * 60 * 1000; // Task-uri care expiră în următoarele 5 minute
     });
   };
 
@@ -77,11 +93,15 @@ export const TaskProvider = ({ children }) => {
     const currentTime = new Date();
 
     return tasks.filter((task) => {
+      if (task.completed || task.overdue) {
+        return false; // Exclude task-urile completate sau deja overdue
+      }
+
       const taskEndTime = new Date();
       const [hours, minutes] = task.endTime.split(':').map(Number);
-      taskEndTime.setHours(hours, minutes, 0);
+      taskEndTime.setHours(hours, minutes, 0, 0);
 
-      return taskEndTime < currentTime && !task.completed && !task.overdue; // Task expirat
+      return taskEndTime < currentTime; // Task-ul este expirat
     });
   };
 
